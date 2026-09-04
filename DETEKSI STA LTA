@@ -1,0 +1,921 @@
+#18 Agutsus
+# ==========================================================
+# MULTI-STATION STA/LTA + PAZ INSTRUMENT CORRECTION
+# + AUTOMATIC PICKING
+# + COINCIDENCE
+# + EVENT WINDOW 120 SECOND
+# + SAVE WAVEFORM TO HARD DISK
+#
+# Output waveform:
+#   Instrument-corrected velocity
+#   Unit: m/s
+#
+# ==========================================================
+
+import os
+import obspy
+import numpy as np
+import matplotlib.pyplot as plt
+
+from obspy.core.util import AttribDict
+from obspy.signal.trigger import classic_sta_lta, trigger_onset
+
+
+# ==========================================================
+# 1. OUTPUT FOLDER - HARD DISK
+# ==========================================================
+
+OUTPUT_ROOT = "/Volumes/dai121087/MULTI_STATION_EVENTS_STA_LTA/18"
+
+os.makedirs(
+    OUTPUT_ROOT,
+    exist_ok=True
+)
+
+print("OUTPUT FOLDER:")
+print(OUTPUT_ROOT)
+
+
+# ==========================================================
+# 2. FILE PATHS - 5 STASIUN
+# ==========================================================
+
+filepaths = {
+
+    "RE5DE": "/Volumes/dai121087/2023/RE5DE/EHZ.D/AM.RE5DE.00.EHZ.D.2023.230",
+
+    "R6940": "/Volumes/dai121087/2023/R6940/EHZ.D/AM.R6940.00.EHZ.D.2023.230",
+
+    "R265F": "/Volumes/dai121087/2023/R265F/EHZ.D/AM.R265F.00.EHZ.D.2023.230",
+
+    "R7D17": "/Volumes/dai121087/2023/R7D17/EHZ.D/AM.R7D17.00.EHZ.D.2023.230",
+
+    "R0279": "/Volumes/dai121087/2023/R0279/EHZ.D/AM.R0279.00.EHZ.D.2023.230"
+}
+
+
+# ==========================================================
+# 3. PAZ INSTRUMENT RESPONSE
+#
+# Nilai yang digunakan sama dengan kode koreksi
+# instrumen Anda sebelumnya.
+# ==========================================================
+
+PAZ = AttribDict({
+
+    "poles": [
+
+        -1 + 3.03j,
+        -1 - 3.03j,
+
+        -3.03 + 666.67j,
+        -3.03 - 666.67j
+
+    ],
+
+    "zeros": [
+
+        0j,
+        0j,
+        0j
+
+    ],
+
+    "sensitivity": 360000000,
+
+    "gain": 693.0
+})
+
+
+# ==========================================================
+# 4. PARAMETER PRE-FILTER UNTUK PAZ
+# ==========================================================
+
+PRE_FILT = [
+    0.3,
+    0.5,
+    5.0,
+    10.0
+]
+
+
+# ==========================================================
+# 5. BANDPASS FILTER
+# ==========================================================
+
+FREQ_MIN = 0.8
+FREQ_MAX = 1.8
+
+FILTER_CORNERS = 4
+
+
+# ==========================================================
+# 6. PARAMETER STA/LTA
+# ==========================================================
+
+STA_SEC = 10
+LTA_SEC = 120
+
+ON_TRIGGER = 3.0
+OFF_TRIGGER = 0.5
+
+
+# ==========================================================
+# 7. MULTI-STATION COINCIDENCE
+# ==========================================================
+
+COINCIDENCE_WINDOW = 20       # detik
+
+MIN_STATION = 3
+
+
+# ==========================================================
+# 8. EVENT WINDOW
+#
+# Total = 120 detik
+#
+# 60 detik sebelum event
+# 60 detik setelah event
+#
+# Sumbu grafik = 0 sampai 120 detik
+# Event berada sekitar detik ke-60
+# ==========================================================
+
+EVENT_WINDOW = 120
+
+HALF_WINDOW = EVENT_WINDOW / 2
+
+
+# ==========================================================
+# 9. STORAGE
+# ==========================================================
+
+all_picks = {}
+
+all_traces = {}
+
+
+# ==========================================================
+# 10. PROCESSING SETIAP STASIUN
+# ==========================================================
+
+for station, filepath in filepaths.items():
+
+    print("\n")
+    print("=" * 70)
+    print(f"PROCESSING STATION : {station}")
+    print("=" * 70)
+
+
+    # ======================================================
+    # READ DATA
+    # ======================================================
+
+    st = obspy.read(filepath)
+
+    print(
+        f"Jumlah trace awal : {len(st)}"
+    )
+
+
+    # ======================================================
+    # MERGE
+    # ======================================================
+
+    if len(st) > 1:
+
+        st.merge(
+            method=1,
+            fill_value=0
+        )
+
+
+    tr = st[0]
+
+
+    # ======================================================
+    # SAMPLING RATE
+    # ======================================================
+
+    fs = tr.stats.sampling_rate
+
+    print(
+        f"Sampling rate : {fs} Hz"
+    )
+
+    print(
+        f"Start time    : {tr.stats.starttime}"
+    )
+
+    print(
+        f"End time      : {tr.stats.endtime}"
+    )
+
+
+    # ======================================================
+    # DETREND
+    # ======================================================
+
+    tr.detrend("demean")
+
+    tr.detrend("linear")
+
+
+    # ======================================================
+    # TAPER
+    #
+    # Dilakukan sebelum koreksi PAZ untuk mengurangi
+    # efek tepi pada proses dekonvolusi.
+    # ======================================================
+
+    tr.taper(
+        max_percentage=0.05,
+        type="hann"
+    )
+
+
+    # ======================================================
+    # INSTRUMENT RESPONSE CORRECTION
+    #
+    # PAZ + GAIN
+    #
+    # remove_sensitivity=True
+    #
+    # Output dikonversi menjadi respons fisik
+    # sesuai PAZ yang digunakan sebelumnya.
+    # ======================================================
+
+    print(
+        "Melakukan koreksi respons instrumen..."
+    )
+
+    tr.simulate(
+
+        paz_remove=PAZ,
+
+        remove_sensitivity=True,
+
+        pre_filt=PRE_FILT
+    )
+
+
+    print(
+        "Koreksi instrumen selesai."
+    )
+
+    print(
+        "Output amplitude : velocity"
+    )
+
+    print(
+        "Unit             : m/s"
+    )
+
+
+    # ======================================================
+    # BANDPASS FILTER
+    #
+    # Filtering dilakukan SETELAH koreksi instrumen.
+    # ======================================================
+
+    tr.filter(
+
+        "bandpass",
+
+        freqmin=FREQ_MIN,
+
+        freqmax=FREQ_MAX,
+
+        corners=FILTER_CORNERS,
+
+        zerophase=True
+    )
+
+
+    print(
+        f"Bandpass : {FREQ_MIN} - {FREQ_MAX} Hz"
+    )
+
+
+    # ======================================================
+    # SIMPAN DATA KONTINU HASIL KOREKSI INSTRUMEN
+    # ======================================================
+
+    corrected_dir = os.path.join(
+
+        OUTPUT_ROOT,
+
+        "01_CORRECTED_CONTINUOUS"
+    )
+
+    os.makedirs(
+
+        corrected_dir,
+
+        exist_ok=True
+    )
+
+
+    corrected_file = os.path.join(
+
+        corrected_dir,
+
+        f"{station}_corrected_0.8-1.8Hz.mseed"
+    )
+
+
+    tr.write(
+
+        corrected_file,
+
+        format="MSEED"
+    )
+
+
+    print(
+        "Corrected waveform saved:"
+    )
+
+    print(
+        corrected_file
+    )
+
+
+    # ======================================================
+    # STA/LTA
+    # ======================================================
+
+    print(
+        "Running STA/LTA..."
+    )
+
+
+    cft = classic_sta_lta(
+
+        np.abs(tr.data),
+
+        int(STA_SEC * fs),
+
+        int(LTA_SEC * fs)
+    )
+
+
+    # ======================================================
+    # TRIGGER ONSET
+    # ======================================================
+
+    triggers = trigger_onset(
+
+        cft,
+
+        ON_TRIGGER,
+
+        OFF_TRIGGER
+    )
+
+
+    # ======================================================
+    # AUTOMATIC PICKING
+    #
+    # t_on  = automatic onset / trigger on
+    # t_off = trigger off
+    # ======================================================
+
+    picks = []
+
+
+    for on, off in triggers:
+
+        t_on = (
+
+            tr.stats.starttime
+
+            + on / fs
+        )
+
+
+        t_off = (
+
+            tr.stats.starttime
+
+            + off / fs
+        )
+
+
+        picks.append(
+
+            (
+                t_on,
+                t_off
+            )
+        )
+
+
+    all_picks[station] = picks
+
+    all_traces[station] = tr
+
+
+    print(
+        f"{station}: "
+        f"{len(picks)} kandidat event"
+    )
+
+
+# ==========================================================
+# 11. MULTI-STATION COINCIDENCE
+# ==========================================================
+
+print("\n")
+print("=" * 70)
+print("MULTI-STATION COINCIDENCE")
+print("=" * 70)
+
+
+candidate_times = []
+
+
+for picks in all_picks.values():
+
+    for t_on, _ in picks:
+
+        candidate_times.append(
+            t_on
+        )
+
+
+candidate_times.sort()
+
+
+final_events = []
+
+
+for t in candidate_times:
+
+    stations_detected = []
+
+
+    # ======================================================
+    # CEK SEMUA STASIUN
+    # ======================================================
+
+    for station, picks in all_picks.items():
+
+        for t_on, _ in picks:
+
+            if (
+
+                abs(t - t_on)
+
+                <= COINCIDENCE_WINDOW
+
+            ):
+
+                stations_detected.append(
+                    station
+                )
+
+                break
+
+
+    # ======================================================
+    # MINIMUM 3 STASIUN
+    # ======================================================
+
+    if len(stations_detected) >= MIN_STATION:
+
+
+        # ==================================================
+        # HINDARI DUPLIKASI EVENT
+        # ==================================================
+
+        if (
+
+            not final_events
+
+            or
+
+            abs(
+                t - final_events[-1][0]
+            )
+
+            > COINCIDENCE_WINDOW
+
+        ):
+
+
+            final_events.append(
+
+                (
+                    t,
+                    stations_detected
+                )
+            )
+
+
+# ==========================================================
+# HASIL
+# ==========================================================
+
+print("\n")
+print("=" * 70)
+print("HASIL FINAL MULTI-STATION EVENT")
+print("=" * 70)
+
+
+print(
+    f"Total event : "
+    f"{len(final_events)}"
+)
+
+
+# ==========================================================
+# 12. EVENT WINDOWING + SAVE
+# ==========================================================
+
+event_root = os.path.join(
+
+    OUTPUT_ROOT,
+
+    "02_FINAL_EVENTS"
+)
+
+os.makedirs(
+
+    event_root,
+
+    exist_ok=True
+)
+
+
+for event_number, (
+    event_time,
+    stations_detected
+) in enumerate(
+
+    final_events,
+
+    start=1
+):
+
+
+    print("\n")
+    print("-" * 70)
+
+    print(
+        f"EVENT {event_number:03d}"
+    )
+
+    print(
+        f"Event time : "
+        f"{event_time}"
+    )
+
+    print(
+        f"Stations   : "
+        f"{stations_detected}"
+    )
+
+    print("-" * 70)
+
+
+    # ======================================================
+    # FOLDER EVENT
+    # ======================================================
+
+    event_dir = os.path.join(
+
+        event_root,
+
+        f"Event_{event_number:03d}"
+    )
+
+    os.makedirs(
+
+        event_dir,
+
+        exist_ok=True
+    )
+
+
+    # ======================================================
+    # EVENT WINDOW
+    #
+    # 60 detik sebelum event
+    # 60 detik setelah event
+    # ======================================================
+
+    t0 = (
+
+        event_time
+
+        - HALF_WINDOW
+    )
+
+
+    t1 = (
+
+        event_time
+
+        + HALF_WINDOW
+    )
+
+
+    # ======================================================
+    # FIGURE
+    # ======================================================
+
+    fig, axes = plt.subplots(
+
+        len(all_traces),
+
+        1,
+
+        figsize=(12, 10),
+
+        sharex=True
+    )
+
+
+    if len(all_traces) == 1:
+
+        axes = [axes]
+
+
+    # ======================================================
+    # TITLE
+    # ======================================================
+
+    fig.suptitle(
+
+        f"Multi-station Event "
+        f"{event_number:03d} | "
+
+        f"{event_time.strftime('%Y-%m-%d %H:%M:%S')} | "
+
+        f"{len(stations_detected)} Stations",
+
+        fontsize=14
+    )
+
+
+    # ======================================================
+    # LOOP STASIUN
+    # ======================================================
+
+    for ax, (
+        station,
+        tr
+    ) in zip(
+
+        axes,
+
+        all_traces.items()
+    ):
+
+
+        # ==================================================
+        # EVENT WINDOW
+        # ==================================================
+
+        tr_cut = (
+
+            tr.copy().trim(
+
+                t0,
+
+                t1,
+
+                pad=False
+            )
+        )
+
+
+        # ==================================================
+        # SAVE WAVEFORM EVENT
+        #
+        # Unit = m/s
+        # ==================================================
+
+        waveform_file = os.path.join(
+
+            event_dir,
+
+            f"Event_{event_number:03d}_"
+            f"{station}.mseed"
+        )
+
+
+        tr_cut.write(
+
+            waveform_file,
+
+            format="MSEED"
+        )
+
+
+        print(
+            f"Saved waveform : "
+            f"{waveform_file}"
+        )
+
+
+        # ==================================================
+        # TIME AXIS 0 - 120 SECOND
+        # ==================================================
+
+        times = tr_cut.times()
+
+
+        # ==================================================
+        # PLOT
+        # ==================================================
+
+        ax.plot(
+
+            times,
+
+            tr_cut.data,
+
+            "k",
+
+            lw=0.8
+        )
+
+
+        ax.set_ylabel(
+
+            f"{station}\n(m/s)"
+        )
+
+
+        # ==================================================
+        # AUTOMATIC PICKING MARKER
+        # ==================================================
+
+        for t_on, t_off in all_picks[station]:
+
+
+            if (
+
+                t0 <= t_on <= t1
+
+            ):
+
+
+                # ------------------------------------------
+                # RELATIVE TO WINDOW START
+                # ------------------------------------------
+
+                relative_on = (
+
+                    t_on - t0
+                )
+
+
+                relative_off = (
+
+                    t_off - t0
+                )
+
+
+                # ------------------------------------------
+                # ONSET
+                # ------------------------------------------
+
+                ax.axvline(
+
+                    relative_on,
+
+                    color="red",
+
+                    linestyle="--",
+
+                    linewidth=1
+                )
+
+
+                # ------------------------------------------
+                # OFFSET
+                # ------------------------------------------
+
+                ax.axvline(
+
+                    relative_off,
+
+                    color="blue",
+
+                    linestyle="--",
+
+                    linewidth=1
+                )
+
+
+        # ==================================================
+        # GRID
+        # ==================================================
+
+        ax.grid(
+
+            alpha=0.3
+        )
+
+
+    # ======================================================
+    # X AXIS
+    # ======================================================
+
+    axes[-1].set_xlabel(
+
+        "Time (s)"
+    )
+
+
+    axes[-1].set_xlim(
+
+        0,
+
+        EVENT_WINDOW
+    )
+
+
+    axes[-1].set_xticks(
+
+        np.arange(
+
+            0,
+
+            EVENT_WINDOW + 1,
+
+            20
+        )
+    )
+
+
+    # ======================================================
+    # LAYOUT
+    # ======================================================
+
+    plt.tight_layout()
+
+
+    # ======================================================
+    # SAVE FIGURE
+    # ======================================================
+
+    figure_file = os.path.join(
+
+        event_dir,
+
+        f"Event_{event_number:03d}.png"
+    )
+
+
+    fig.savefig(
+
+        figure_file,
+
+        dpi=300,
+
+        bbox_inches="tight"
+    )
+
+
+    print(
+        f"Saved figure : "
+        f"{figure_file}"
+    )
+
+
+    # ======================================================
+    # DISPLAY
+    # ======================================================
+
+    plt.show()
+
+    plt.close(fig)
+
+
+# ==========================================================
+# 13. SUMMARY
+# ==========================================================
+
+print("\n")
+print("=" * 70)
+print("PROSES SELESAI")
+print("=" * 70)
+
+print(
+    f"Total final events : "
+    f"{len(final_events)}"
+)
+
+print(
+    "Semua hasil disimpan di:"
+)
+
+print(
+    OUTPUT_ROOT
+)
+
+print("=" * 70)
