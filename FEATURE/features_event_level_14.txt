@@ -1,0 +1,50 @@
+========================================================================
+SEISMIC 14-FEATURE ARRAY PIPELINE
+========================================================================
+
+Input : /Users/dairoh/Mbak_Dai/data_training
+CSV   : /Users/dairoh/Mbak_Dai/OUTPUT_14_FITUR/features_event_level_14.csv
+
+14 FEATURES:
+ 1. Mean
+ 2. Std
+ 3. Skewness
+ 4. Kurtosis
+ 5. RMS
+ 6. Peak
+ 7. Energy
+ 8. Zero_Cross
+ 9. Dominant_Freq
+10. SpectralCentroid
+11. SpectralEntropy
+12. Back_Azimuth
+13. Slowness
+14. Beam_Power
+
+CLASS DISTRIBUTION:
+Label
+Rockfall               84
+Multiphase             71
+VTB                    71
+Regional_Earthquake    49
+
+DIAGNOSTICS:
+Events found    : 275
+Events success  : 275
+Events skipped  : 0
+
+FEATURE QC:
+Mean                   valid= 275 NaN=   0 median=2.1399212e-12
+Std                    valid= 275 NaN=   0 median=4.9389839e-06
+Skewness               valid= 275 NaN=   0 median=0.00074324302
+Kurtosis               valid= 275 NaN=   0 median=2.9267403
+RMS                    valid= 275 NaN=   0 median=4.9389839e-06
+Peak                   valid= 275 NaN=   0 median=2.6100489e-05
+Energy                 valid= 275 NaN=   0 median=2.9351583e-07
+Zero_Cross             valid= 275 NaN=   0 median=287.2
+Dominant_Freq          valid= 275 NaN=   0 median=1.0215815
+SpectralCentroid       valid= 275 NaN=   0 median=1.1812562
+SpectralEntropy        valid= 275 NaN=   0 median=6.1188792
+Back_Azimuth           valid= 275 NaN=   0 median=320
+Slowness               valid= 275 NaN=   0 median=1.13
+Beam_Power             valid= 275 NaN=   0 median=0.65212011
