@@ -1,0 +1,27 @@
+{
+  "Input_CSV": "/Users/dairoh/Mbak_Dai/OUTPUT_14_FITUR/features_event_level_14.csv",
+  "Events_Input": 275,
+  "Events_ML_Pool": 275,
+  "NO_ARRAY_feature_count": 11,
+  "ARRAY_feature_count": 14,
+  "Class_Display": {
+    "Multiphase": "Multiphase",
+    "Rockfall": "Rockfall",
+    "VTB": "VTB",
+    "Regional_Earthquake": "Gempa bumi (NEV)"
+  },
+  "Splits": [
+    "90:10",
+    "80:20",
+    "70:30",
+    "60:40"
+  ],
+  "Models": [
+    "SVM-RBF",
+    "XGBoost"
+  ],
+  "CV": "StratifiedKFold 5",
+  "GridSearch_scoring": "f1_macro",
+  "SMOTE": "inside imblearn pipeline; never on test set",
+  "Random_state": 42
+}
