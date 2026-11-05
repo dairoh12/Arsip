@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
 """
 =============================================================================
-Seismic Event Classification Pipeline — VERSI TANPA PREPROCESSING
-(seismic_classification_nopreproc.py; versi dengan preprocessing tetap ada
- di seismic_classification_new.py)
+Seismic Event Classification Pipeline — 
 
-Perbedaan dari seismic_classification_new.py: file .mseed dibaca apa adanya
-(tanpa taper, instrument correction, resample, bandpass). Fitur, FK,
-training, evaluasi, dan semua plot/laporan output identik.
-4060_ML_2026 — Konversi dari Jupyter Notebook ke standalone Python script
 
 Penggunaan (one-click full pipeline):
     python seismic_ml_pipeline.py --mode all \
@@ -21,23 +15,6 @@ Atau jalankan per tahap:
     python seismic_ml_pipeline.py --mode extract --data_dir ... --output_csv ...
     python seismic_ml_pipeline.py --mode train   --output_csv ... --model_output ...
     python seismic_ml_pipeline.py --mode evaluate --output_csv ... --model_output ...
-=============================================================================
-
-CATATAN REKONSTRUKSI (dibaca sebelum lanjut)
----------------------------------------------
-File ini ditulis ulang oleh Claude karena SSD berisi file asli terputus
-di tengah sesi kerja. Sebagian besar isi file ini adalah salinan PERSIS
-dari versi terakhir yang sudah diverifikasi sepanjang sesi (dibaca penuh
-dan/atau diedit langsung). Beberapa fungsi plotting/report di TAHAP 4
-(PREDIKSI) tidak sempat terbaca isinya secara penuh sebelum SSD terputus —
-fungsi-fungsi itu ditulis ulang dari nol agar tetap fungsional (nama,
-parameter, dan cara pemanggilan tetap sama), dan masing-masing diberi
-banner komentar:
-
-    # ⚠️ REKONSTRUKSI ⚠️
-
-Cari banner itu untuk menemukan bagian yang perlu dibandingkan ulang
-dengan kode asli begitu SSD sudah bisa diakses lagi.
 """
 
 import argparse
