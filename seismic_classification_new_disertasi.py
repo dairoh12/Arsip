@@ -100,7 +100,7 @@ REFERENCE_STATION = "RE5DE"
 KM_PER_DEGREE_LAT = 111.32
 
 # Label kelas seismik yang valid (nama subfolder di dalam data_dir)
-VALID_LABELS = ["Multiphase", "Rockfall", "VTB", "NonEvent"]
+VALID_LABELS = ["Multiphase", "Rockfall", "VTB", "GempaBumi"]
 
 SEED = 42
 np.random.seed(SEED)
@@ -923,7 +923,7 @@ def extract_features_from_trace(trace):
 
     return [
         mean_val, std_val, skew_val, kurt_val,
-        rms, peak, energy, zero_cross,
+        rms, peak, energy, zero_crossing,
         dom_freq, spectral_centroid, spectral_entropy,
     ]
 
@@ -1035,12 +1035,12 @@ def run_feature_extraction(data_dir, output_csv, station_coords, valid_labels=No
     │   └── 20230819_082830_083030_R265F.mseed
     ├── VTB/
     ├── Rockfall/
-    └── NonEvent/
+    └── GempaBumi/
 
     Kolom Output CSV
     ----------------
-    Event, Label, Mean, Std, Skewness, Kurtosis, RMS, Peak, Energy,
-    Zero_Cross, Dominant_Freq, SpectralCentroid, SpectralEntropy,
+    Event, Label, Mean, Standar_Deviation, Skewness, Kurtosis, RMS_Bandwitdh, Maximum_Amplitude, Energy_Ecnter,
+    Zero_Crossing, Dominant_Freq, SpectralCentroid, SpectralEntropy,
     [Back_Azimuth, Slowness, Beam_Power — hanya jika use_fk=True]
     """
     if valid_labels is None:
@@ -1118,8 +1118,8 @@ def run_feature_extraction(data_dir, output_csv, station_coords, valid_labels=No
                 print(f"  Proses {processed}/{total_events} event...")
 
     columns = [
-        "Mean", "Std", "Skewness", "Kurtosis",
-        "RMS", "Peak", "Energy", "Zero_Cross",
+        "Mean", "Standar_Deviation", "Skewness", "Kurtosis",
+        "RMS_Bandwidth", "Maximum_Amplitude", "Energy_Center", "Zero_Crossing",
         "Dominant_Freq", "SpectralCentroid", "SpectralEntropy",
     ]
     if use_fk:
@@ -1306,8 +1306,8 @@ def run_feature_extraction_predict(
         return pd.DataFrame()
 
     columns = [
-        "Mean", "Std", "Skewness", "Kurtosis",
-        "RMS", "Peak", "Energy", "Zero_Cross",
+        "Mean", "Standar_Deviation", "Skewness", "Kurtosis",
+        "RMS_Bandwidth", "Maximum_Amplitude", "Energy_Center", "Zero_Crossing",
         "Dominant_Freq", "SpectralCentroid", "SpectralEntropy",
         "Back_Azimuth", "Slowness", "Beam_Power",
     ]
@@ -1916,7 +1916,7 @@ def plot_class_distribution(y_series, class_names, save_path=None):
          pemilihan metode oversampling (SMOTE) dan metrik evaluasi (f1_macro).
       2. Memahami komposisi dataset seismik (seberapa banyak setiap jenis event).
 
-    Dalam dataset Merapi: VTB biasanya dominan, diikuti Rockfall, NonEvent,
+    Dalam dataset Merapi: VTB biasanya dominan, diikuti Rockfall, GempaBumi,
     dan Multiphase paling sedikit.
 
     Parameter
@@ -1998,7 +1998,7 @@ def _plot_sample_waveforms_for_subset(
     rng         = np.random.RandomState(random_state)
 
     class_colors = {
-        "NonEvent":   "#2196F3",
+        "GempaBumi":   "#2196F3",
         "Multiphase": "#E91E63",
         "Rockfall":   "#FF9800",
         "VTB":        "#4CAF50",
@@ -2154,7 +2154,7 @@ def _save_waveforms_for_event_list(
     untuk daftar event (DataFrame kolom Event & Label) ke out_root/{Label}/{Event}.png.
     """
     class_colors = {
-        "NonEvent":   "#2196F3",
+        "GempaBumi":   "#2196F3",
         "Multiphase": "#E91E63",
         "Rockfall":   "#FF9800",
         "VTB":        "#4CAF50",
@@ -2246,8 +2246,8 @@ def save_all_dataset_waveforms(
     """
     Menyimpan waveform + spektrum INDIVIDUAL untuk SETIAP event yang dipakai
     di split ini — bukan cuma 1 contoh per kelas seperti plot_training/testing_
-    sample_waveforms(), tapi SELURUH event (mis. total 275: 71 Multiphase +
-    49 NonEvent + 84 RockFall + 71 VTB) — dipisah ke subfolder training/
+    sample_waveforms(), tapi SELURUH event (mis. total 336: 128 Multiphase +
+    45 GempaBumi + 106 RockFall + 57 VTB) — dipisah ke subfolder training/
     dan testing/ SESUAI keanggotaan event tsb di split (X_train/X_test) untuk
     skenario ini, bukan digabung jadi satu folder.
 
@@ -2534,7 +2534,7 @@ def plot_split_model_comparison(y_test, svm_pred, xgb_pred, class_names, test_si
     split_model_comparison_train_{train_pct}_{test_pct}.png        (subset_label="Train")
     """
     _display_map = {
-        "NonEvent":   "Gempa Bumi",
+        "GempaBumi":   "Gempa Bumi",
         "Multiphase": "MP",
         "Rockfall":   "RF",
         "VTB":        "VTB",
@@ -4655,7 +4655,7 @@ def plot_prediction_per_sample(results_df, class_names, model_name,
         # ── Mode 2: Fallback — confidence bar ─────────────────────────
         # Warna bar sesuai kelas prediksi
         CLASS_COLORS = {
-            "NonEvent"  : "#2196F3",
+            "GempaBumi"  : "#2196F3",
             "Multiphase": "#E91E63",
             "Rockfall"  : "#FF9800",
             "VTB"       : "#4CAF50",
@@ -4798,7 +4798,7 @@ def plot_prediction_waveform_examples(
     rng = np.random.RandomState(random_state)
 
     class_colors = {
-        "NonEvent":   "#2196F3",
+        "GempaBumit":   "#2196F3",
         "Multiphase": "#E91E63",
         "Rockfall":   "#FF9800",
         "VTB":        "#4CAF50",
@@ -5638,7 +5638,7 @@ def parse_args():
     --station_coords : Koordinat stasiun (JSON string atau path .json).
                        Format: '{"KODE": [lat, lon], ...}'
     --labels         : Daftar label kelas valid (nama subfolder).
-                       Default: Multiphase Rockfall VTB NonEvent
+                       Default: Multiphase Rockfall VTB GempBumi
     --no_fk          : Nonaktifkan fitur FK Analysis/Beamforming.
 
     Contoh Penggunaan
